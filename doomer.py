@@ -1,9 +1,22 @@
 # DOOMer v0.1.4
 # 2025-11-04
 
+
+# {
+# 	"last_wad": "DOOM2",
+# 	"last_played": "2025-11-04 21:24:54.124456",
+# 	"favorites": [
+# 		"DOOM2",
+# 		"Eviternity",
+# 		"Hell_Revealed"
+# 	]
+# }
+
 import os
 import json
 import subprocess
+
+from datetime import datetime
 
 from textual import on
 from textual.app import App, ComposeResult
@@ -19,6 +32,21 @@ USER_DIR = ""
 FILETYPE = [".wad", ".WAD", ".Wad", ".deh", ".DEH"]
 #misc 
 TITLE = "DOOMer"
+SETTINGS = "doomer.json"
+
+
+def json_read():
+    with open(SETTINGS, "r") as f:
+        load_data = json.load(f)
+
+def json_update(key, value):
+    with open(SETTINGS, "r") as f:
+        load_data = json.load(f)
+
+    load_data[key] = value
+
+    with open(SETTINGS, "w") as f:
+        json.dump(load_data, f, indent=4)
 
 #Lists to break up WADs by IWAD. Excluding DOOM2 WADs, each WAD must be added here.
 DOOM = ["DOOM", "SIGIL", "SIGIL_II"]
@@ -35,6 +63,7 @@ def get_source_port_ver(self) -> None:
     #runs subprocess to get current version of 'source port' installed
     text = subprocess.run(['dsda-doom', '-v'], stdout=subprocess.PIPE).stdout.decode('utf-8')
     output = text[:18] #formats output down to just sourceport name and version
+    json_update("dsda-ver", output) #update settings json with current version
     return output
 
 #scans "DIR" for WAD folders and sorts alphabetically 
@@ -146,6 +175,13 @@ class Doomer(App):
                 yield Button("Play", id="play_button", variant="success", disabled=True)
                 yield Button("Quit", id="quit", variant="error")
 
+    def on_mount(self) -> None:
+        with open(SETTINGS, "r") as f:
+            load_data = json.load(f)
+        self.start_wad = load_data["last_wad"]
+
+        label = self.query_one("#command")
+        label.update(f"WAD: {self.start_wad}")
 
     @on(Button.Pressed, "#quit")
     def quit(self, event: Button.Pressed) -> None:
@@ -154,7 +190,9 @@ class Doomer(App):
 
     @on(Button.Pressed, "#play_button")
     def launch(self):
+        json_update("last_played", f"{datetime.now()}")  #update settings JSON with last played datetime
         os.system(self.output_run)
+        
 
 
     @on(Button.Pressed, ".doom")
@@ -174,6 +212,9 @@ class Doomer(App):
         button.disabled = False
         label = self.query_one("#command")
         label.update(f"WAD: {self.wad}")
+        json_update("last_wad", f"{self.wad}")  #update settings JSON with last WAD played
+        json_update("last_iwad", "doom.wad")  #update settings JSON with last IWAD played
+        
 
 
     @on(Button.Pressed, ".doom2")
@@ -192,6 +233,8 @@ class Doomer(App):
         button.disabled = False
         label = self.query_one("#command")
         label.update(f"WAD: {self.wad}")
+        json_update("last_wad", f"{self.wad}")  #update settings JSON with last WAD played
+        json_update("last_iwad", "doom2.wad")  #update settings JSON with last IWAD played
 
 
     @on(Button.Pressed, ".tnt")
@@ -210,6 +253,8 @@ class Doomer(App):
         button.disabled = False
         label = self.query_one("#command")
         label.update(f"WAD: {self.wad}")
+        json_update("last_wad", f"{self.wad}")  #update settings JSON with last WAD played
+        json_update("last_iwad", "tnt.wad")  #update settings JSON with last IWAD played
 
 
     @on(Button.Pressed, ".plutonia")
@@ -228,6 +273,8 @@ class Doomer(App):
         button.disabled = False
         label = self.query_one("#command")
         label.update(f"WAD: {self.wad}")
+        json_update("last_wad", f"{self.wad}")  #update settings JSON with last WAD played
+        json_update("last_iwad", "plutonia.wad")  #update settings JSON with last IWAD played
 
     
     @on(Button.Pressed, ".heretic")
@@ -242,13 +289,16 @@ class Doomer(App):
         
         if self.wad == "Heretic":
             iwad_command = f"dsda-doom -iwad /Users/alex/doom/WADS/Heretic/heretic.wad -file"
+            json_update("last_iwad", "heretic.wad")  #update settings JSON with last IWAD played
         else:
             iwad_command = f"dsda-doom -iwad /Users/alex/doom/WADS/Hexen/hexen.wad -file"
+            json_update("last_iwad", "hexen.wad")  #update settings JSON with last IWAD played
         self.output_run = f"{iwad_command}{self.wad_command}"
         button = self.query_one("#play_button")
         button.disabled = False
         label = self.query_one("#command")
         label.update(f"WAD: {self.wad}")
+        json_update("last_wad", f"{self.wad}")  #update settings JSON with last WAD played
 
 
 if __name__ == "__main__":
